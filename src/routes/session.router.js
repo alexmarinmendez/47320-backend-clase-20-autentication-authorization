@@ -1,5 +1,6 @@
 import { Router } from "express";
 import UserModel from "../dao/models/user.model.js";
+import { createHash, isValidPassword } from "../utils.js";
 
 const router = Router()
 
@@ -11,8 +12,15 @@ router.get('/register', (req, res) => {
 // API para crear usuarios en la DB
 router.post('/register', async(req, res) => {
     const userNew = req.body
-    console.log(userNew);
-
+    // console.log(userNew);
+    // const userNew = {
+    //     first_name: req.body.first_name,
+    //     last_name: req.body.last_name,
+    //     age: req.body.age,
+    //     email: req.body.email,
+    //     password: createHash(req.body.password)
+    // }
+    userNew.password = createHash(req.body.password)
     const user = new UserModel(userNew)
     await user.save()
 
@@ -28,11 +36,15 @@ router.get('/login', (req, res) => {
 router.post('/login', async (req, res) => {
     const { email, password } = req.body
 
-    const user = await UserModel.findOne({email, password}).lean().exec()
+    // const user = await UserModel.findOne({email, password}).lean().exec()
+    const user = await UserModel.findOne({email}).lean().exec()
     if(!user) {
         return res.status(401).render('errors/base', {
-            error: 'Error en email y/o password'
+            error: 'User not found'
         })
+    }
+    if (!isValidPassword(user, password)) {
+        return res.status(403).send({ status: 'error', error: 'Incorrect password' })
     }
 
     req.session.user = user
